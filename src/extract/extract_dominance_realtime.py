@@ -11,6 +11,7 @@ import pandas as pd
 from src.configs.config_mongo import MongoDBConfig
 from src.configs.config_variable import DATA_CRAWL_CONFIG, EXTRACT_CONFIG
 from src.log.logger_setup import LoggerSetup
+from src.tele_bot.tele_message import TelegramMonitor
 
 
 class ExtractBTCDominanceRealtime:
@@ -40,6 +41,9 @@ class ExtractBTCDominanceRealtime:
         self.poll_interval_seconds = poll_interval_seconds or cfg_poll or 24 * 60 * 60
         self.running = False
         self.thread = None
+        
+        # Initialize Telegram Monitor for data checking
+        self.telegram_monitor = TelegramMonitor()
 
     def _fetch_latest_hour(self):
         # Try tvDatafeed first
@@ -90,6 +94,11 @@ class ExtractBTCDominanceRealtime:
                     if pd.notnull(last_row.get("close", last_row.get("Close", None)))
                     else None
                 ),
+                "volume": (
+                    float(last_row.get("volume", last_row.get("Volume", None)))
+                    if pd.notnull(last_row.get("volume", last_row.get("Volume", None)))
+                    else None
+                ),
             }
 
             return doc
@@ -109,6 +118,10 @@ class ExtractBTCDominanceRealtime:
                 upsert=True,
             )
             self.logger.info(f"Upserted realtime doc ts={doc['timestamp_ms']}")
+            
+            # Kiểm tra dữ liệu sau khi insert thành công
+            self.telegram_monitor.check_data_after_realtime_extract()
+            
             return True
         except Exception as e:
             self.logger.error(f"Failed to insert realtime doc: {e}")

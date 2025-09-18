@@ -177,31 +177,49 @@ System has recovered successfully!
 
         while self.running:
             try:
-                has_recent_data = self.check_recent_data()
-
-                if not has_recent_data:
-                    if not data_was_missing and self.should_send_alert():
-                        alert_message = self.format_alert_message()
-                        if self.send_telegram_message(alert_message):
-                            self.last_alert_time = time.time()
-                        data_was_missing = True
-
-                    self.logger.warning(
-                        f"No recent data found in last {self.data_timeout} seconds"
-                    )
-
-                else:
-                    if data_was_missing:
-                        recovery_message = self.format_recovery_message()
-                        self.send_telegram_message(recovery_message)
-                        data_was_missing = False
-                        self.logger.info("Data flow recovered")
-
+                # Chỉ kiểm tra dữ liệu khi được trigger từ realtime extractor
+                # Không tự động kiểm tra liên tục nữa
                 time.sleep(self.check_interval)
 
             except Exception as e:
                 self.logger.error(f"Error in monitor loop: {str(e)}")
                 time.sleep(self.check_interval)
+
+    def check_data_after_realtime_extract(self):
+        """
+        Method này được gọi từ realtime extractor sau khi extract xong
+        để kiểm tra dữ liệu và gửi thông báo nếu cần
+        """
+        try:
+            self.logger.info("Checking data after realtime extraction...")
+            has_recent_data = self.check_recent_data()
+            data_was_missing = False  # Reset trạng thái
+
+            if not has_recent_data:
+                if self.should_send_alert():
+                    alert_message = self.format_alert_message()
+                    if self.send_telegram_message(alert_message):
+                        self.last_alert_time = time.time()
+                    data_was_missing = True
+
+                self.logger.warning(
+                    f"No recent data found in last {self.data_timeout} seconds after realtime extraction"
+                )
+                return False
+
+            else:
+                if data_was_missing:
+                    recovery_message = self.format_recovery_message()
+                    self.send_telegram_message(recovery_message)
+                    data_was_missing = False
+                    self.logger.info("Data flow recovered after realtime extraction")
+
+                self.logger.info("Data check successful after realtime extraction")
+                return True
+
+        except Exception as e:
+            self.logger.error(f"Error checking data after realtime extraction: {str(e)}")
+            return False
 
     def start(self):
         if not self.bot_token or not self.chat_id:

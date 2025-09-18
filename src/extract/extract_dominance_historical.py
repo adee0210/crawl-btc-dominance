@@ -60,6 +60,11 @@ class ExtractBTCDominanceHistorical:
                         if pd.notnull(row.get("close", row.get("Close", None)))
                         else None
                     ),
+                    "volume": (
+                        float(row.get("volume", row.get("Volume", None)))
+                        if pd.notnull(row.get("volume", row.get("Volume", None)))
+                        else None
+                    ),
                 }
 
                 # upsert by timestamp_ms to avoid duplicates, and remove any leftover 'symbol' field
