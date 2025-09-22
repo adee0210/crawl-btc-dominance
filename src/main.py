@@ -47,6 +47,10 @@ class BTCDominanceMain:
                 self.historical_extractor.get_recent_historical_data(
                     days=historical_days
                 )
+            
+            # Sau khi lấy data lịch sử xong, bắt đầu daily monitoring
+            self.logger.info("Starting historical daily monitoring (runs at 7AM UTC)...")
+            self.historical_extractor.start_daily_monitoring()
 
         except Exception as e:
             self.logger.error(f"Error in historical extraction: {str(e)}")
