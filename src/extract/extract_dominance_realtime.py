@@ -128,22 +128,23 @@ class ExtractBTCDominanceRealtime:
                     "last_update": realtime_data["last_update"]
                 }
                 
-                # Update high nếu cao hơn
-                if today_doc.get("high") and realtime_data["current_high"]:
-                    if realtime_data["current_high"] > today_doc.get("high"):
-                        update_fields["high"] = realtime_data["current_high"]
+                # Update TẤT CẢ historical fields với dữ liệu realtime hiện tại
+                # Không có điều kiện gì - luôn update toàn bộ OHLCV
                 
-                # Update low nếu thấp hơn        
-                if today_doc.get("low") and realtime_data["current_low"]:
-                    if realtime_data["current_low"] < today_doc.get("low"):
-                        update_fields["low"] = realtime_data["current_low"]
+                if realtime_data["current_open"]:
+                    update_fields["open"] = realtime_data["current_open"]
                 
-                # Update close với giá hiện tại
+                if realtime_data["current_high"]:
+                    update_fields["high"] = realtime_data["current_high"]
+                
+                if realtime_data["current_low"]:
+                    update_fields["low"] = realtime_data["current_low"]
+                
                 if realtime_data["current_close"]:
                     update_fields["close"] = realtime_data["current_close"]
                 
-                # KHÔNG update volume field - giữ nguyên historical volume
-                # Chỉ update current_volume field cho realtime tracking
+                if realtime_data["current_volume"]:
+                    update_fields["volume"] = realtime_data["current_volume"]
                 
                 self.collection.update_one(
                     {"datetime": today_date},  # Tìm theo datetime thay vì timestamp_ms
