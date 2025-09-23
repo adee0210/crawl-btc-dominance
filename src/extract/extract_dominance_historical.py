@@ -44,7 +44,7 @@ class ExtractBTCDominanceHistorical:
                     dt = idx.to_pydatetime()
 
                 doc = {
-                    "datetime": dt.strftime("%Y-%m-%d %H:%M:%S"),
+                    "datetime": dt.strftime("%Y-%m-%d"),  # Chỉ ngày, không có giờ
                     "timestamp_ms": int(dt.timestamp() * 1000),
                     "open": (
                         float(row.get("open", row.get("Open", None)))
@@ -73,12 +73,32 @@ class ExtractBTCDominanceHistorical:
                     ),
                 }
 
-                # upsert by timestamp_ms to avoid duplicates, and remove any leftover 'symbol' field
-                self.collection.update_one(
-                    {"timestamp_ms": doc["timestamp_ms"]},
-                    {"$set": doc, "$unset": {"symbol": ""}},
-                    upsert=True,
-                )
+                # Check if document already exists to avoid overwriting realtime fields
+                existing_doc = self.collection.find_one({"timestamp_ms": doc["timestamp_ms"]})
+                
+                if existing_doc:
+                    # Document exists, only update historical fields
+                    historical_fields = {
+                        "datetime": doc["datetime"],
+                        "timestamp_ms": doc["timestamp_ms"],
+                        "open": doc["open"],
+                        "high": doc["high"],
+                        "low": doc["low"],
+                        "close": doc["close"],
+                        "volume": doc["volume"],
+                        "type": doc["type"]
+                    }
+                    self.collection.update_one(
+                        {"timestamp_ms": doc["timestamp_ms"]},
+                        {"$set": historical_fields, "$unset": {"symbol": ""}},
+                    )
+                else:
+                    # New document, upsert completely
+                    self.collection.update_one(
+                        {"timestamp_ms": doc["timestamp_ms"]},
+                        {"$set": doc, "$unset": {"symbol": ""}},
+                        upsert=True,
+                    )
                 inserted += 1
             except Exception as e:
                 self.logger.error(f"Failed to insert row {idx}: {e}")
@@ -160,7 +180,7 @@ class ExtractBTCDominanceHistorical:
                 dt = pd.to_datetime(last_idx).to_pydatetime()
 
             doc = {
-                "datetime": dt.strftime("%Y-%m-%d %H:%M:%S"),
+                "datetime": dt.strftime("%Y-%m-%d"),  # Chỉ ngày, không có giờ
                 "timestamp_ms": int(dt.timestamp() * 1000),
                 "open": (
                     float(last_row.get("open", last_row.get("Open", None)))
@@ -201,12 +221,34 @@ class ExtractBTCDominanceHistorical:
         if not doc:
             return False
         try:
-            self.collection.update_one(
-                {"timestamp_ms": doc["timestamp_ms"]},
-                {"$set": doc, "$unset": {"symbol": ""}},
-                upsert=True,
-            )
-            self.logger.info(f"Upserted daily doc ts={doc['timestamp_ms']}")
+            # Kiểm tra xem document đã tồn tại chưa
+            existing_doc = self.collection.find_one({"timestamp_ms": doc["timestamp_ms"]})
+            
+            if existing_doc:
+                # Document đã tồn tại, chỉ update các field historical, giữ nguyên realtime fields
+                historical_fields = {
+                    "datetime": doc["datetime"],
+                    "timestamp_ms": doc["timestamp_ms"],
+                    "open": doc["open"],
+                    "high": doc["high"],
+                    "low": doc["low"],
+                    "close": doc["close"],
+                    "volume": doc["volume"],
+                    "type": doc["type"]
+                }
+                self.collection.update_one(
+                    {"timestamp_ms": doc["timestamp_ms"]},
+                    {"$set": historical_fields, "$unset": {"symbol": ""}},
+                )
+                self.logger.info(f"Updated historical fields for existing doc ts={doc['timestamp_ms']}")
+            else:
+                # Document mới, insert toàn bộ
+                self.collection.update_one(
+                    {"timestamp_ms": doc["timestamp_ms"]},
+                    {"$set": doc, "$unset": {"symbol": ""}},
+                    upsert=True,
+                )
+                self.logger.info(f"Upserted new daily doc ts={doc['timestamp_ms']}")
             return True
         except Exception as e:
             self.logger.error(f"Failed to insert daily doc: {e}")
