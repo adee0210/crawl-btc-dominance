@@ -168,8 +168,7 @@ class ExtractBTCDominanceRealtime:
                     "current_low": realtime_data["current_low"],
                     "current_close": realtime_data["current_close"],
                     "current_volume": realtime_data["current_volume"],
-                    "last_update": realtime_data["last_update"],
-                    "type": "historical_daily"
+                    "last_update": realtime_data["last_update"]
                 }
                 
                 self.collection.insert_one(new_doc)

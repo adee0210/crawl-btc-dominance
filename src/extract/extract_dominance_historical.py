@@ -85,8 +85,7 @@ class ExtractBTCDominanceHistorical:
                         "high": doc["high"],
                         "low": doc["low"],
                         "close": doc["close"],
-                        "volume": doc["volume"],
-                        "type": doc["type"]
+                        "volume": doc["volume"]
                     }
                     self.collection.update_one(
                         {"timestamp_ms": doc["timestamp_ms"]},
@@ -207,7 +206,6 @@ class ExtractBTCDominanceHistorical:
                     if pd.notnull(last_row.get("volume", last_row.get("Volume", None)))
                     else None
                 ),
-                "type": "historical_daily"
             }
 
             return doc
@@ -233,8 +231,7 @@ class ExtractBTCDominanceHistorical:
                     "high": doc["high"],
                     "low": doc["low"],
                     "close": doc["close"],
-                    "volume": doc["volume"],
-                    "type": doc["type"]
+                    "volume": doc["volume"]
                 }
                 self.collection.update_one(
                     {"timestamp_ms": doc["timestamp_ms"]},
